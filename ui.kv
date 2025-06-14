@@ -1,52 +1,158 @@
-<MainScreen>:
-    orientation: 'vertical'
-    padding: 10
-    spacing: 10
-
-    Label:
-        text: "Kiszállítási lista"
-        font_size: '22sp'
-        bold: True
-        size_hint_y: None
-        height: 50
-
-    ScrollView:
-        size_hint: (1, 0.6)
-        do_scroll_x: False
-
-        GridLayout:
-            id: order_list
-            cols: 1
-            size_hint_y: None
-            height: self.minimum_height
-            row_default_height: 40
-            row_force_default: True
-            spacing: 5
-            padding: 5
-
+<LoginScreen>:
+    name: 'login'
     BoxLayout:
-        size_hint_y: None
-        height: 50
+        orientation: 'vertical'
+        padding: 50
         spacing: 10
 
+        Label: 
+            text: "Bejelentkezés"
+            font_size: '24sp'
+
         TextInput:
-            id: barcode_input
-            hint_text: "Olvasd be a termék vonalkódját"
+            id: username
+            hint_text: "Felhasználónév"
             multiline: False
+            size_hint_y: None
+            height: 60
 
         Button:
-            text: "Keresés"
-            on_press: app.search_barcode()
+            text: "Bejelentkezés"
+            on_press: root.login()
+            size_hint_y: None
+            height: 60
 
-    Button:
-        text: "Rendeléslista frissítése"
-        size_hint_y: None
-        height: 45
-        on_press: app.load_orders()
+        Label:
+            size_hint_y: None
+            height: 400
 
-    Label:
-        id: result_label
-        text: ""
-        size_hint_y: None
-        height: 200
-        color: (0.2, 0.6, 0.2, 1)
+<MenuScreen>:
+    name: 'menu'
+    BoxLayout:
+        orientation: 'vertical'
+        padding: 20
+        spacing: 10
+
+        Label:
+            text: "Főmenü"
+            font_size: '24sp'
+
+        Button:
+            text: "Raktározás"
+            on_press: app.root.current = 'main'
+            size_hint_y: None
+            height: 60
+
+        Button:
+            text: "Beállítások"
+            id: settings_button
+            on_press: app.root.current = 'settings'
+            opacity: 0
+            disabled: True
+            size_hint_y: None
+            height: 60
+
+        Button:
+            text: "Kijelentkezés"
+            on_press: root.logout()
+            size_hint_y: None
+            height: 60
+
+        Label:
+            size_hint_y: None
+            height: 400
+
+<SettingsScreen>:
+    name: 'settings'
+    BoxLayout:
+        orientation: 'vertical'
+        padding: 20
+        spacing: 10
+
+        Label:
+            text: "Beállítások (admin)"
+            font_size: '20sp'
+
+        TextInput:
+            id: api_url
+            hint_text: "API URL (pl. http://localhost/raktar_api)"
+            multiline: False
+            size_hint_y: None
+            height: 60
+
+        Button:
+            text: "Mentés"
+            on_press: app.save_config(api_url.text)
+            size_hint_y: None
+            height: 60
+
+        Button:
+            text: "Vissza a menübe"
+            on_press: app.root.current = 'menu'
+            size_hint_y: None
+            height: 60
+
+        Label:
+            size_hint_y: None
+            height: 400
+
+<MainScreen>:
+    name: 'main'
+    BoxLayout:
+        orientation: 'vertical'
+        padding: 10
+        spacing: 10
+
+        Label:
+            text: "Kiszállítási lista"
+            font_size: '22sp'
+            bold: True
+            size_hint_y: None
+            height: 50
+
+        ScrollView:
+            size_hint: (1, 0.6)
+            do_scroll_x: False
+
+            GridLayout:
+                id: order_list
+                cols: 1
+                size_hint_y: None
+                height: self.minimum_height
+                row_default_height: 40
+                row_force_default: True
+                spacing: 5
+                padding: 5
+
+        BoxLayout:
+            size_hint_y: None
+            height: 50
+            spacing: 10
+
+            TextInput:
+                id: barcode_input
+                hint_text: "Olvasd be a termék vonalkódját"
+                multiline: False
+
+            Button:
+                text: "Keresés"
+                on_press: app.search_barcode()
+
+        Button:
+            text: "Rendeléslista frissítése"
+            size_hint_y: None
+            height: 45
+            on_press: app.load_orders()
+
+        Label:
+            id: result_label
+            text: ""
+            size_hint_y: None
+            height: 200
+            color: (0.2, 0.6, 0.2, 1)
+
+        Button:
+            text: "Megerősítés"
+            size_hint_y: None
+            height: 45
+            on_press: app.delete_orders()
