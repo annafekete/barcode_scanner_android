@@ -104,6 +104,20 @@
         spacing: 10
 
         Label:
+            size_hint_y: None
+            height: 100
+
+        Button:
+            text: "Vissza a menübe"
+            on_press: app.root.current = 'menu'
+            size_hint_y: None
+            height: 60
+
+        Label:
+            size_hint_y: None
+            height: 100
+
+        Label:
             text: "Kiszállítási lista"
             font_size: '22sp'
             bold: True
@@ -144,15 +158,21 @@
             height: 45
             on_press: app.load_orders()
 
+        ScrollView:
+            size_hint: (1, 0.2)
+            do_scroll_x: False
+
+            GridLayout:
+                id: barcode_results
+                cols: 1
+                size_hint_y: None
+                height: self.minimum_height
+                row_default_height: 40
+                row_force_default: True
+
         Label:
             id: result_label
             text: ""
             size_hint_y: None
-            height: 200
+            height: 100
             color: (0.2, 0.6, 0.2, 1)
-
-        Button:
-            text: "Megerősítés"
-            size_hint_y: None
-            height: 45
-            on_press: app.delete_orders()

@@ -1,20 +1,26 @@
 <?php
 header('Content-Type: application/json');
 
-// DB kapcsolat
-$conn = new mysqli("localhost", "root", "", "raktar_db");
+$host = 'microc.dyndns.org';
+$user = 'newuser1';
+$password = 'A1024a';
+$database = 'luxor';
+$port = 35353;
+
+$conn = new mysqli($host, $user, $password, $database, $port);
+
+// ellenorzes
 if ($conn->connect_error) {
-    echo json_encode(["error" => "DB kapcsolat hiba"]);
+    die("Kapcsolódási hiba: " . $conn->connect_error);
+}
+
+$sql = "SELECT TAZ, ALKAT, HNEV FROM teszo LIMIT 100";
+$stmt = $conn->prepare($sql);
+if (!$stmt) {
+    echo json_encode(["error" => "Hibás lekérdezés: " . $conn->error]);
     exit;
 }
 
-// paraméter ellenőrzés
-$direction = $_GET['direction'] ?? 'outgoing';
-
-// lekérdezés
-$sql = "SELECT barcode, name, owner FROM products WHERE direction = ? AND status = 'pending'";
-$stmt = $conn->prepare($sql);
-$stmt->bind_param("s", $direction);
 $stmt->execute();
 $result = $stmt->get_result();
 
@@ -27,3 +33,4 @@ echo json_encode(["orders" => $orders]);
 
 $stmt->close();
 $conn->close();
+?>

@@ -1,13 +1,15 @@
 import os
 import json
+import requests
 from kivy.app import App
 from kivy.lang import Builder
-from kivy.uix.boxlayout import BoxLayout
-import requests
 from kivy.uix.label import Label
 from kivy.uix.screenmanager import ScreenManager, Screen
+from kivy.uix.button import Button
 
-USER_FILE = 'user_data.json'
+from config import USER_FILE, CONFIG_FILE, DEFAULT_API_URL
+from utils import log_error
+
 
 class LoginScreen(Screen):
     def login(self):
@@ -38,11 +40,14 @@ class MenuScreen(Screen):
             os.remove(USER_FILE)
         self.manager.current = 'login'
 
+
 class SettingsScreen(Screen):
     pass
 
+
 class MainScreen(Screen):
     pass
+
 
 class RaktarApp(App):
     def build(self):
@@ -61,67 +66,81 @@ class RaktarApp(App):
                         sm.current = 'menu'
             except Exception as e:
                 print("Hibás user_data.json, törlés...")
-                if os.path.exists(USER_FILE):
-                    os.remove(USER_FILE)
+                os.remove(USER_FILE)
+
         return sm
 
     def on_start(self):
-        self.load_orders()  # <- ide kerül át
+        self.load_orders()
+
+    def get_api_url(self):
+        if os.path.exists(CONFIG_FILE):
+            try:
+                with open(CONFIG_FILE) as f:
+                    data = json.load(f)
+                    return data.get('api_url', DEFAULT_API_URL)
+            except Exception as e:
+                print(f"Nem sikerült beolvasni a konfigurációt: {e}")
+        return DEFAULT_API_URL
 
     def search_barcode(self):
-        screen = self.root.get_screen('main')  # mindig így!
+        screen = self.root.get_screen('main')
         barcode = screen.ids.barcode_input.text.strip()
+        result_label = screen.ids.result_label
+        result_container = screen.ids.barcode_results
+
         if not barcode:
-            screen.ids.result_label.text = "Adja meg a vonalkódot!"
-            return 
+            result_label.text = "Adja meg a vonalkódot!"
+            return
+
+        result_container.clear_widgets()
+
         try:
-            response = requests.get("http://localhost/raktar_api/api.php", params={"barcode": barcode})
+            api_url = self.get_api_url()
+            response = requests.get(f"{api_url}/api.php", params={"ALKAT": barcode})
             data = response.json()
-            if data.get("found"):
-                screen.ids.result_label.text = f"Termék: {data['name']} \nMegrendelő: {data['owner']}"
+
+            if data.get("found") and "items" in data:
+                result_label.text = f"{len(data['items'])} találat:"
+                for item in data["items"]:
+                    btn = Button(
+                        text=f"{item['name']} ({item['id']})",
+                        size_hint_y=None,
+                        height=40,
+                        on_press=lambda btn, i=item: self.select_item(i)
+                    )
+                    result_container.add_widget(btn)
             else:
-                screen.ids.result_label.text = "Termék nem található."
+                result_label.text = "Termék nem található."
         except Exception as e:
-            screen.ids.result_label.text = f"Hiba: {str(e)}"
+            result_label.text = log_error(e, "Vonalkód keresés")
+
+    def select_item(self, item):
+        screen = self.root.get_screen('main')
+        screen.ids.result_label.text = f"Kiválasztott termék:\n{item['name']} ({item['id']})"
 
     def load_orders(self):
         try:
-            response = requests.get("http://localhost/raktar_api/orders.php?direction=outgoing")
-            data = response.json()
+            api_url = self.get_api_url()
+            response = requests.get(f"{api_url}/orders.php")
+            if response.status_code != 200:
+                raise Exception(f"Hibás státuszkód: {response.status_code}")
+
+            try:
+                data = response.json()
+            except json.JSONDecodeError:
+                raise Exception(f"Nem JSON válasz: {response.text}")
 
             order_list = self.root.get_screen('main').ids.order_list
             order_list.clear_widgets()
 
             for item in data.get("orders", []):
-                label = Label(text=f"{item['barcode']} - {item['name']} ({item['owner']})")
+                label = Label(text=f"{item['HNEV']} - {item['TAZ']} ({item['ALKAT']})")
                 order_list.add_widget(label)
 
             self.root.get_screen('main').ids.result_label.text = "Rendelések betöltve."
-        except Exception as e:  
-            self.root.get_screen('main').ids.result_label.text = f"Hiba: {str(e)}"
-
-    def delete_orders(self):
-        screen = self.root.get_screen('main')
-        barcode = screen.ids.barcode_input.text.strip()
-
-        if not barcode :
-            screen.ids.result_label.text = "Nincs beolvasott vonalkód!"
-            return
-        
-        try:
-            response = requests.post("http://localhost/raktar_api/confirmation.php", data={"barcode": barcode})
-            data = response.json()
-
-            if data.get("success"):
-                screen.ids.result_label.text = f"Termék ({barcode}) státusza: KISZÁLLÍTVA"
-                screen.ids.barcode_input.text = ''
-                self.load_orders()  # frissíti a listát
-            else:
-                screen.ids.result_label.text = f"Hiba: {data.get('error', 'Ismeretlen')}"
         except Exception as e:
-            screen.ids.result_label.text = f"Hálózati hiba: {str(e)}"
-
-    CONFIG_FILE = 'config.json'
+            self.root.get_screen('main').ids.result_label.text = log_error(e, "Termékek betöltése")
 
     def save_config(self, api_url):
         try:
@@ -129,7 +148,8 @@ class RaktarApp(App):
                 json.dump({'api_url': api_url}, f)
             print("Konfiguráció mentve.")
         except Exception as e:
-            print(f"Hiba konfiguráció mentésekor: {e}")
+            log_error(e, "Konfiguráció mentése")
+
 
 if __name__ == '__main__':
     RaktarApp().run()
